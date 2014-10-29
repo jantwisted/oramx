@@ -39,7 +39,21 @@ sub get_dbconnection{
     
 }
 
-sub main{
+sub obj_loader{
+    get_dbconnection();
+    my $obj_list = 'SELECT table_name  from all_tables where owner = ?';
+    my @list;
+    my $sth = $dbh->prepare($obj_list);
+    $sth->execute($db_schema);
+    while (my @row = $sth->fetchrow_array) {
+	push @list, @row;
+    }
+    $dbh->disconnect();
+    return @list;
+    
+}
+
+sub dbcon{
     get_dbconnection();
     my $sql = 'SELECT column_name, data_type, data_length, data_precision, data_scale, data_default, nullable  FROM USER_TAB_COLUMNS WHERE table_name = ?';
     my $pksql = 'SELECT cols.column_name FROM all_constraints cons, all_cons_columns cols WHERE cols.table_name = ? AND cons.constraint_type = ? AND cons.constraint_name = cols.constraint_name AND cons.owner = cols.owner AND cols.owner = ?';
@@ -118,7 +132,7 @@ sub table_constructor{
     my $meta = "LOCATION ".$location."\nATTRIBUTES BLOCKSIZE ".$blocksize.", EXTENT(".$extent1.", ".$extent2."), MAXEXTENTS ".$maxextents;
     for(@$columns){
 
-	if (! defined $_){ next; }
+	if (! defined $_){ $i++; next; }
 	if ($i==0){
 	    $master_ddl = $master_ddl."\n\t".$_." ";
 	    $i++;
@@ -155,6 +169,10 @@ sub table_constructor{
 	    $con = 0;
 	    $i++;
 	    next;
+	}elsif ($i==5){
+	    $master_ddl .= " DEFAULT ".$_;
+	    $i++;
+	    next;
 	}else{
 	    if(  \$_ == \$$columns[-1]  ) {
 		if ($_ eq 'N'){
@@ -162,9 +180,9 @@ sub table_constructor{
 		}
 		if (@$pk){
 		    $master_ddl .= ','.primary_key_constraint(\@$pk, \@$pkn);
-		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.primary_key_footer(\@$pk).";";
+		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.primary_key_footer(\@$pk).";\n\n";
 		}else{
-		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.";";
+		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.";\n\n";
 		}
 	    }else{
 		if ($_ eq 'N'){
@@ -181,6 +199,14 @@ sub table_constructor{
     print $master_ddl;
 }
 
+
+sub main{
+    my @obj_list = obj_loader();
+    foreach(@obj_list){
+	$db_object = $_;
+	dbcon();
+    }
+}
 
 main();
 
