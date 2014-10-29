@@ -41,7 +41,7 @@ sub get_dbconnection{
 
 sub main{
     get_dbconnection();
-    my $sql = 'SELECT column_name, data_type, data_length, nullable  FROM USER_TAB_COLUMNS WHERE table_name = ?';
+    my $sql = 'SELECT column_name, data_type, data_length, data_precision, data_scale, data_default, nullable  FROM USER_TAB_COLUMNS WHERE table_name = ?';
     my $pksql = 'SELECT cols.column_name FROM all_constraints cons, all_cons_columns cols WHERE cols.table_name = ? AND cons.constraint_type = ? AND cons.constraint_name = cols.constraint_name AND cons.owner = cols.owner AND cols.owner = ?';
     my $pknamesql = 'SELECT cols.constraint_name FROM all_constraints cons, all_cons_columns cols WHERE cols.table_name = ? AND cons.constraint_type = ? AND cons.constraint_name = cols.constraint_name AND cons.owner = cols.owner AND cols.owner = ?';
     my $sth = $dbh->prepare($sql);
@@ -87,7 +87,6 @@ sub primary_key_constraint{
 	}
     }
     return $pk_query;
-
 }
 
 
@@ -118,6 +117,8 @@ sub table_constructor{
     my $master_ddl = '';
     my $meta = "LOCATION ".$location."\nATTRIBUTES BLOCKSIZE ".$blocksize.", EXTENT(".$extent1.", ".$extent2."), MAXEXTENTS ".$maxextents;
     for(@$columns){
+
+	if (! defined $_){ next; }
 	if ($i==0){
 	    $master_ddl = $master_ddl."\n\t".$_." ";
 	    $i++;
@@ -129,13 +130,28 @@ sub table_constructor{
 	    if ($_ eq 'TIMESTAMP'){
 		$con = 1;
 	    }
+	    if ($_ eq 'NUMERIC'){
+		$con = 2;
+	    }
 	    $master_ddl = $master_ddl.$_;
 	    $i++;
 	    next;
 	}elsif ($i==2){
-	    if ($con != 1){
+	    if ($con != 1 and $con != 2){
 		$master_ddl = $master_ddl."($_)";
+	    }elsif($con == 2){
+		$i++;
+		next;
 	    }
+	    $con = 0;
+	    $i++;
+	    next;
+	}elsif ($i==3 and $con==2){
+	    $master_ddl .= "($_,";
+	    $i++;
+	    next;
+	}elsif ($i==4 and $con==2){
+	    $master_ddl .= "$_)";
 	    $con = 0;
 	    $i++;
 	    next;
@@ -161,7 +177,6 @@ sub table_constructor{
 	    next;
 	}
     }
-    
     
     print $master_ddl;
 }
