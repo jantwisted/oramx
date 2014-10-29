@@ -1,3 +1,4 @@
+#!/usr/bin/perl -w                                                                                                                                           
 #<Oramx converts oracle to sqlmx.>
 #Copyright (C) <2014> <Janith Perera>
 
@@ -24,7 +25,7 @@
 #You should have received a copy of the GNU General Public License
 #along with Oramx. If not, see <http://www.gnu.org/licenses/>.
 
-#!/usr/bin/perl -w                                                                                                                                           
+
 use Config::Simple;
 use strict;
 use warnings;
@@ -57,15 +58,16 @@ my $extent2 = $cfg->param('PARAM2');
 my $maxextents = $cfg->param('MAXEXTENTS');
 
 my %data = ('VARCHAR2', 'VARCHAR', 'NUMBER', 'NUMERIC', 'DATE', 'TIMESTAMP');
-
+open (QUERY, ">>$query_file") or die "Could not open $query_file: $!";
 
 sub get_dbconnection{
-        
+    print "Trying to connect to database: dbi:Oracle:host=$db_host;sid=$db_name;port=$db_port\n";    
     $dbh = DBI->connect("dbi:Oracle:host=$db_host;sid=$db_name;port=$db_port","$db_user","$db_pass");
     
 }
 
 sub obj_loader{
+    print "Retrieving table information...";
     get_dbconnection();
     my $obj_list = 'SELECT table_name  from all_tables where owner = ?';
     my @list;
@@ -80,7 +82,7 @@ sub obj_loader{
 }
 
 sub dbcon{
-    get_dbconnection();
+    
     my $sql = 'SELECT column_name, data_type, data_length, data_precision, data_scale, data_default, nullable  FROM USER_TAB_COLUMNS WHERE table_name = ?';
     my $pksql = 'SELECT cols.column_name FROM all_constraints cons, all_cons_columns cols WHERE cols.table_name = ? AND cons.constraint_type = ? AND cons.constraint_name = cols.constraint_name AND cons.owner = cols.owner AND cols.owner = ?';
     my $pknamesql = 'SELECT cols.constraint_name FROM all_constraints cons, all_cons_columns cols WHERE cols.table_name = ? AND cons.constraint_type = ? AND cons.constraint_name = cols.constraint_name AND cons.owner = cols.owner AND cols.owner = ?';
@@ -108,7 +110,7 @@ sub dbcon{
 	push @pkname, @row_pk_name;
     }
     table_constructor(\@list, \@pklist, \@pkname);
-    $dbh->disconnect();
+    
     
 }
 
@@ -221,18 +223,31 @@ sub table_constructor{
 	    next;
 	}
     }
-    
-    print $master_ddl;
+    print QUERY $master_ddl;
+    print "Dumping table $db_object...\n"
 }
 
 
 sub main{
     my @obj_list = obj_loader();
+    get_dbconnection();
     foreach(@obj_list){
 	$db_object = $_;
 	dbcon();
     }
 }
 
-main();
+sub intro{
+    print "\n";
+    print "OraMX 0.3.0, a converter for sqlmx.\n";
+    print "See 'README.md' for more information.\n";
+    print "This is free software: you are free to change and redistribute it.\n";
+    print "There is NO WARRANTY, to the extent permitted by law.\n";
+    print "\n\n"
+}
 
+
+intro();
+main();
+$dbh->disconnect();
+close QUERY;
