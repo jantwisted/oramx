@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w                                                                                                                                           
+#!/usr/bin/perl -w
 #<Oramx converts oracle to sqlmx.>
 #Copyright (C) <2014> <Janith Perera>
 
@@ -31,7 +31,6 @@ use Config::Simple;
 use strict;
 use warnings;
 use DBI;
-use Term::ANSIColor;
 use Getopt::Long;
 use utf8;
 
@@ -61,18 +60,23 @@ my $maxextents = $cfg->param('MAXEXTENTS');
 
 
 
-my %data = ('VARCHAR2', 'VARCHAR', 'NUMBER', 'NUMERIC', 'DATE', 'TIMESTAMP');
+our %TYPE = (
+    # Oracle to MX data types mapping goes here
+    'VARCHAR2' => 'VARCHAR',
+    'NUMBER' => 'NUMERIC',
+    'DATE' => 'TIMESTAMP'
+);
 open (QUERY, ">>$query_file") or die "Could not open $query_file: $!";
 
 sub get_dbconnection{
-    print "Trying to connect to database: dbi:Oracle:host=$db_host;sid=$db_name;port=$db_port\n";    
+    print "Trying to connect to database: dbi:Oracle:host=$db_host;sid=$db_name;port=$db_port\n";
     $dbh = DBI->connect("dbi:Oracle:host=$db_host;sid=$db_name;port=$db_port","$db_user","$db_pass");
-    
+
 }
 
 sub obj_loader{
     print "Retrieving table information...\n";
-    my $obj_list = 'SELECT table_name  from all_tables where owner = ?';
+    my $obj_list = 'SELECT TABLE_NAME  FROM ALL_TABLES WHERE OWNER = ?';
     my @list;
     my $sth = $dbh->prepare($obj_list);
     $sth->execute($db_schema);
@@ -80,14 +84,14 @@ sub obj_loader{
 	push @list, @row;
     }
     return @list;
-    
+
 }
 
-sub dbcon{
-    
-    my $sql = 'SELECT column_name, data_type, data_length, data_precision, data_scale, data_default, nullable  FROM USER_TAB_COLUMNS WHERE table_name = ?';
-    my $pksql = 'SELECT cols.column_name FROM all_constraints cons, all_cons_columns cols WHERE cols.table_name = ? AND cons.constraint_type = ? AND cons.constraint_name = cols.constraint_name AND cons.owner = cols.owner AND cols.owner = ?';
-    my $pknamesql = 'SELECT cols.constraint_name FROM all_constraints cons, all_cons_columns cols WHERE cols.table_name = ? AND cons.constraint_type = ? AND cons.constraint_name = cols.constraint_name AND cons.owner = cols.owner AND cols.owner = ?';
+sub _tables{
+
+    my $sql = 'SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, DATA_DEFAULT, NULLABLE  FROM USER_TAB_COLUMNS WHERE TABLE_NAME = ?';
+    my $pksql = 'SELECT COLS.COLUMN_NAME FROM ALL_CONSTRAINTS CONS, ALL_CONS_COLUMNS COLS WHERE COLS.TABLE_NAME = ? AND CONS.CONSTRAINT_TYPE = ? AND CONS.CONSTRAINT_NAME = COLS.CONSTRAINT_NAME AND CONS.OWNER = COLS.OWNER AND COLS.OWNER = ?';
+    my $pknamesql = 'SELECT COLS.CONSTRAINT_NAME FROM ALL_CONSTRAINTS CONS, ALL_CONS_COLUMNS COLS WHERE COLS.TABLE_NAME = ? AND CONS.CONSTRAINT_TYPE = ? AND CONS.CONSTRAINT_NAME = COLS.CONSTRAINT_NAME AND CONS.OWNER = COLS.OWNER AND COLS.OWNER = ?';
     my $sth = $dbh->prepare($sql);
     my @list;
     my @pklist;
@@ -111,24 +115,21 @@ sub dbcon{
     while (my @row_pk_name = $sthpkname->fetchrow_array){
 	push @pkname, @row_pk_name;
     }
-    table_constructor(\@list, \@pklist, \@pkname);
-    
-    
+    _table_constructor(\@list, \@pklist, \@pkname);
+
+
 }
 
-sub ref_constraint{
-    my $refsql = 'select cons.table_name, cons.constraint_name, '.
-	'cols2.column_name, cols.table_name, cols.column_name '.
-	'  from all_constraints cons left '.
-	'join all_cons_columns cols on cols.constraint_name = cons.r_constraint_name'.
-	' left join all_cons_columns cols2 on cols2.constraint_name = cons.constraint_name '.
-	'where cons.constraint_type= ? and cons.owner= ? and '.
-	' cols.owner= ? and cols2.owner= ?';
+sub _ref_constraints{
+    my $refsql = qq{SELECT CONS.TABLE_NAME, CONS.CONSTRAINT_NAME, COLS2.COLUMN_NAME, COLS.TABLE_NAME, COLS.COLUMN_NAME
+	FROM ALL_CONSTRAINTS CONS LEFT JOIN ALL_CONS_COLUMNS COLS ON COLS.CONSTRAINT_NAME = CONS.R_CONSTRAINT_NAME
+	LEFT JOIN ALL_CONS_COLUMNS COLS2 ON COLS2.CONSTRAINT_NAME = CONS.CONSTRAINT_NAME
+	WHERE CONS.CONSTRAINT_TYPE= ? AND CONS.OWNER= ? AND COLS.OWNER= ? AND COLS2.OWNER= ?};
     my @reflist;
     my $i=0;
     my $master_ddl='';
     my $rth = $dbh->prepare($refsql);
-    
+
     $rth->execute('R', $db_schema, $db_schema, $db_schema);
 
     while(my @row = $rth->fetchrow_array){
@@ -158,12 +159,12 @@ sub ref_constraint{
 	    $i=0;
 	}
     }
-    
+
     print QUERY $master_ddl;
-    
+
 }
 
-sub primary_key_constraint{
+sub _primary_key{
     my ($pkcolumns, $name) = @_;
     my $_name = '';
     my $pk_query = '';
@@ -181,7 +182,7 @@ sub primary_key_constraint{
 }
 
 
-sub primary_key_footer{
+sub _primary_key_footer{
     my ($pkcolumns) = @_;
     my $pk_query = '';
     $pk_query = "\nSTORE BY(";
@@ -194,11 +195,11 @@ sub primary_key_footer{
 	}
     }
     return $pk_query;
-    
+
 }
 
 
-sub table_constructor{
+sub _table_constructor{
 
     my ($columns, $pk, $pkn) = @_;
     my $ddl_head = "CREATE TABLE $db_object\n(";
@@ -215,8 +216,8 @@ sub table_constructor{
 	    $i++;
 	    next;
 	}elsif ($i==1){
-	    if (exists $data{$_}){
-		$_ = $data{$_};
+	    if (exists $TYPE{$_}){
+		$_ = $TYPE{$_};
 	    }
 	    if ($_ eq 'TIMESTAMP'){
 		$con = 1;
@@ -256,8 +257,8 @@ sub table_constructor{
 		    $master_ddl = $master_ddl." NOT NULL";
 		}
 		if (@$pk){
-		    $master_ddl .= ','.primary_key_constraint(\@$pk, \@$pkn);
-		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.primary_key_footer(\@$pk).";\n\n\n\n";
+		    $master_ddl .= ','._primary_key(\@$pk, \@$pkn);
+		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta._primary_key_footer(\@$pk).";\n\n\n\n";
 		}else{
 		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.";\n\n\n\n";
 		}
@@ -283,10 +284,10 @@ sub main{
 	my @obj_list = obj_loader();
 	foreach(@obj_list){
 	    $db_object = $_;
-	    dbcon();
+	    _tables();
 	}
     }elsif($db_type eq 'REFCON'){
-	ref_constraint();
+	_ref_constraints();
     }
 }
 
@@ -301,13 +302,14 @@ There is NO WARRANTY, to the extent permitted by law.
 
 
 };
-    print QUERY "-- Generated by OraMX, version 0.3.0\n";
+    print QUERY "-- Generated by OraMX, version $VERSION\n";
     print QUERY "-- Authors: Janith Perera, janith\@member.fsf.org\n";
     print QUERY "-- License: GPL v2 or Later\n\n\n";
 
 }
 
 
+# main program
 intro();
 main();
 $dbh->disconnect();
