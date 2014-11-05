@@ -34,7 +34,7 @@ use DBI;
 use Getopt::Long;
 use utf8;
 
-my $VERSION = '0.3.3';
+my $VERSION = '0.3.4';
 Config::Simple->import_from('oramx.conf', \my %Config);
 my $cfg = new Config::Simple('oramx.conf');
 
@@ -57,7 +57,7 @@ my $blocksize = $cfg->param('BLOCKSIZE');
 my $extent1 = $cfg->param('PARAM1');
 my $extent2 = $cfg->param('PARAM2');
 my $maxextents = $cfg->param('MAXEXTENTS');
-
+my $_objcounter = 0;
 
 
 our %TYPE = (
@@ -139,6 +139,7 @@ sub _ref_constraints{
     for (@reflist){
 	if ($i==0){
 	    print "Dumping refcon $_...\n";
+	    $_objcounter += 1;
 	    $master_ddl .= "ALTER TABLE ".$_." ADD CONSTRAINT ";
 	    $i++;
 	    next;
@@ -274,7 +275,8 @@ sub _table_constructor{
 	}
     }
     print QUERY $master_ddl;
-    print "Dumping table $db_object...\n"
+    print "Dumping table $db_object...\n";
+    $_objcounter += 1;
 }
 
 
@@ -314,3 +316,11 @@ intro();
 main();
 $dbh->disconnect();
 close QUERY;
+print qq{
+
+Finished execution.
+Number of converted objects : $_objcounter
+See $query_file
+Bye!
+
+}
