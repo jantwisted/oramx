@@ -310,12 +310,8 @@ There is NO WARRANTY, to the extent permitted by law.
 
 }
 
+sub outro{
 
-# main program
-intro();
-main();
-$dbh->disconnect();
-close QUERY;
 print qq{
 
 Finished execution.
@@ -324,3 +320,13 @@ See $query_file
 Bye!
 
 }
+
+}
+
+
+# main program
+intro();
+main();
+$dbh->disconnect();
+close QUERY;
+outro();
