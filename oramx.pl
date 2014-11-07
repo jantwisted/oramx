@@ -64,7 +64,8 @@ our %TYPE = (
     # Oracle to MX data types mapping goes here
     'VARCHAR2' => 'VARCHAR',
     'NUMBER' => 'NUMERIC',
-    'DATE' => 'TIMESTAMP'
+    'DATE' => 'TIMESTAMP',
+    'TIMESTAMP' => 'TIMESTAMP2'
 );
 open (QUERY, ">>$query_file") or die "Could not open $query_file: $!";
 
@@ -210,9 +211,9 @@ sub _table_constructor{
     my $master_ddl = '';
     my $meta = "LOCATION ".$location."\nATTRIBUTES BLOCKSIZE ".$blocksize.", EXTENT(".$extent1.", ".$extent2."), MAXEXTENTS ".$maxextents;
     for(@$columns){
-
-	if (! defined $_){ $i++; next; }
-	if ($con == 2) {
+	if (! defined $_){ $i++;  next; }
+	# all conditions should be looped before proceed
+	if ($con == 2) { # looping NUMERIC
 	   if ($i == 3){ 
 	       $master_ddl .= "($_,";
 	       $i++;
@@ -224,13 +225,23 @@ sub _table_constructor{
 	       next;
 	   }
 	}
+	if ($con == 3) { # looping TIMESTAMP2
+	   if ($i == 4){ 
+	       $i++;
+	       $con = 0;
+	       next;
+	   }
+	}
+	# looping ends
 	if ($i==0){
 	    $master_ddl = $master_ddl."\n\t".$_." ";
 	    $i++;
 	    next;
 	}elsif ($i==1){
-	    if (exists $TYPE{$_}){
-		$_ = $TYPE{$_};
+	    while( my( $key, $value ) = each %TYPE ){
+		if (index($_, $key) != -1){
+		    $_ = $value;
+		}
 	    }
 	    if ($_ eq 'TIMESTAMP'){
 		$con = 1;
@@ -238,28 +249,24 @@ sub _table_constructor{
 	    if ($_ eq 'NUMERIC'){
 		$con = 2;
 	    }
+	    if ($_ eq 'TIMESTAMP2'){
+		$con = 3;
+		$_ = 'TIMESTAMP';
+	    }
+
 	    $master_ddl = $master_ddl.$_;
 	    $i++;
 	    next;
 	}elsif ($i==2){
-	    if ($con != 1 and $con != 2){
+	    if ($con != 1 and $con != 2 and $con != 3){
 		$master_ddl = $master_ddl."($_)";
-	    }elsif($con == 2){
+	    }elsif($con == 2 or $con == 3){
 		$i++;
 		next;
 	    }
 	    $con = 0;
 	    $i++;
 	    next;
-	#}elsif ($i==3 and $con==2){
-	#    $master_ddl .= "($_,";
-	#    $i++;
-	#    next;
-	#}elsif ($i==4 and $con==2){
-	#    $master_ddl .= "$_)";
-	#    $con = 0;
-	#    $i++;
-	#    next;
 	}elsif ($i==5){
 	    $master_ddl .= " DEFAULT ".$_;
 	    $i++;
@@ -286,7 +293,8 @@ sub _table_constructor{
 	    next;
 	}
     }
-    print QUERY $master_ddl;
+    print QUERY $master_ddl; # debugging mix bug
+    
     print "Dumping table $db_object...\n";
     $_objcounter += 1;
 }
@@ -298,7 +306,7 @@ sub main{
 	my @obj_list = obj_loader();
 	foreach(@obj_list){
 	    $db_object = $_;
-	    _tables();
+	    _tables(); 
 	}
     }elsif($db_type eq 'REFCON'){
 	_ref_constraints();
