@@ -67,6 +67,18 @@ our %TYPE = (
     'DATE' => 'TIMESTAMP',
     'TIMESTAMP' => 'TIMESTAMP2'
 );
+
+
+our %KEYWORDS = (
+    # check if column name is a key word of sqlmx
+    'RESULT' => 1,
+    'VALUE' => 2,
+    'YEAR' => 3
+);
+
+ 
+
+
 open (QUERY, ">>$query_file") or die "Could not open $query_file: $!";
 
 sub get_dbconnection{
@@ -235,7 +247,12 @@ sub _table_constructor{
 	}
 	# looping ends
 	if ($i==0){
-	    $master_ddl = $master_ddl."\n\t".$_." ";
+	    $con = 0; # to avoid anomalies
+	    if (exists($KEYWORDS{$_})){
+		$master_ddl = $master_ddl."\n\t\"".$_."\" ";
+	    }else{
+		$master_ddl = $master_ddl."\n\t".$_." ";
+	    }
 	    $i++;
 	    next;
 	}elsif ($i==1){
