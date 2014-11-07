@@ -212,6 +212,18 @@ sub _table_constructor{
     for(@$columns){
 
 	if (! defined $_){ $i++; next; }
+	if ($con == 2) {
+	   if ($i == 3){ 
+	       $master_ddl .= "($_,";
+	       $i++;
+	       next;
+	   }elsif ($i == 4){
+	       $master_ddl .= "$_)";
+	       $con = 0;
+	       $i++;
+	       next;
+	   }
+	}
 	if ($i==0){
 	    $master_ddl = $master_ddl."\n\t".$_." ";
 	    $i++;
@@ -239,15 +251,15 @@ sub _table_constructor{
 	    $con = 0;
 	    $i++;
 	    next;
-	}elsif ($i==3 and $con==2){
-	    $master_ddl .= "($_,";
-	    $i++;
-	    next;
-	}elsif ($i==4 and $con==2){
-	    $master_ddl .= "$_)";
-	    $con = 0;
-	    $i++;
-	    next;
+	#}elsif ($i==3 and $con==2){
+	#    $master_ddl .= "($_,";
+	#    $i++;
+	#    next;
+	#}elsif ($i==4 and $con==2){
+	#    $master_ddl .= "$_)";
+	#    $con = 0;
+	#    $i++;
+	#    next;
 	}elsif ($i==5){
 	    $master_ddl .= " DEFAULT ".$_;
 	    $i++;
