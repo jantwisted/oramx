@@ -73,7 +73,12 @@ our %KEYWORDS = (
     # check if column name is a key word of sqlmx
     'RESULT' => 1,
     'VALUE' => 2,
-    'YEAR' => 3
+    'YEAR' => 3,
+    'LANGUAGE' => 4,
+    'KEY' => 5,
+    'ALIAS' => 6,
+    'POSITION' => 7,
+    'TIMESTAMP' => 8
 );
 
  
