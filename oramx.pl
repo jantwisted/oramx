@@ -207,7 +207,8 @@ sub _table_constructor{
     my $ddl_head = "CREATE TABLE $db_object\n(";
     my $ddl_tail = "\n)\n";
     my $i = 0;
-    my $con = 0;
+    my $con = 0; # column type identifier
+    my $_type_con = 0; # type condition to avoid conflicts
     my $master_ddl = '';
     my $meta = "LOCATION ".$location."\nATTRIBUTES BLOCKSIZE ".$blocksize.", EXTENT(".$extent1.", ".$extent2."), MAXEXTENTS ".$maxextents;
     for(@$columns){
@@ -238,11 +239,14 @@ sub _table_constructor{
 	    $i++;
 	    next;
 	}elsif ($i==1){
+	    
 	    while( my( $key, $value ) = each %TYPE ){
-		if (index($_, $key) != -1){
+		if (index($_, $key) != -1 and $_type_con==0){
 		    $_ = $value;
+		    $_type_con = 1;
 		}
 	    }
+	    $_type_con = 0;
 	    if ($_ eq 'TIMESTAMP'){
 		$con = 1;
 	    }
@@ -293,10 +297,10 @@ sub _table_constructor{
 	    next;
 	}
     }
-    print QUERY $master_ddl; # debugging mix bug
-    
-    print "Dumping table $db_object...\n";
-    $_objcounter += 1;
+   
+   print QUERY $master_ddl;   
+   print "Dumping table $db_object...\n";
+   $_objcounter += 1;
 }
 
 
