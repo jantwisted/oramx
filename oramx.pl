@@ -341,7 +341,7 @@ sub _table_constructor{
 
 sub _sequence{
     my $seqsql = qq{
-    SELECT SEQUENCE_NAME, INCREMENT_BY, MIN_VALUE, MAX_VALUE  FROM USER_SEQUENCES
+    SELECT SEQUENCE_NAME, MIN_VALUE, INCREMENT_BY, MIN_VALUE, MAX_VALUE  FROM USER_SEQUENCES
     };
     my @seqlist;
     my $i=0;
@@ -357,18 +357,22 @@ sub _sequence{
 	if ($i==0){
 	    print "Dumping sequence $_...\n";
 	    $_objcounter += 1;
-	    $master_ddl .= qq{CREATE SEQUENCE "$_" LARGEINT START WITH 1 };
+	    $master_ddl .= qq{CREATE SEQUENCE "$_" };
 	    $i++;
 	    next;
 	}elsif ($i==1){
+	    $master_ddl .= qq{LARGEINT START WITH $_ };
+            $i++;
+            next;
+	}elsif ($i==2){
 	    $master_ddl .= qq{INCREMENT BY $_ };
 	    $i++;
 	    next;
-	}elsif ($i==2){
+	}elsif ($i==3){
 	    $master_ddl .= qq{MINVALUE $_ };
 	    $i++;
 	    next;
-	}elsif ($i==3){
+	}elsif ($i==4){
 	    $master_ddl .= qq{MAXVALUE $_;\n};
 	    $i=0;
 	}
