@@ -34,7 +34,7 @@ use DBI;
 use Getopt::Long;
 use utf8;
 
-my $VERSION = '0.3.4';
+my $VERSION = '0.3.6';
 Config::Simple->import_from('oramx.conf', \my %Config);
 my $cfg = new Config::Simple('oramx.conf');
 
