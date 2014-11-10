@@ -65,7 +65,8 @@ our %TYPE = (
     'VARCHAR2' => 'VARCHAR',
     'NUMBER' => 'NUMERIC',
     'DATE' => 'TIMESTAMP',
-    'TIMESTAMP' => 'TIMESTAMP2'
+    'TIMESTAMP' => 'TIMESTAMP2',
+    'RAW' => 'BLOB'
 );
 
 
@@ -244,12 +245,22 @@ sub _table_constructor{
 	   }
 	}
 	if ($con == 3) { # looping TIMESTAMP2
+	   if ($i == 4){ # try to change the condition
+	       $i++;
+	       $con = 0;
+	       next;
+	   }
+	}
+	# BLOB need to be tested
+	if ($con == 4) { # looping TIMESTAMP2
 	   if ($i == 4){ 
 	       $i++;
 	       $con = 0;
 	       next;
 	   }
 	}
+
+
 	# looping ends
 	if ($i==0){
 	    $con = 0; # to avoid anomalies
@@ -278,6 +289,9 @@ sub _table_constructor{
 	    if ($_ eq 'TIMESTAMP2'){
 		$con = 3;
 		$_ = 'TIMESTAMP';
+	    }
+	    if ($_ eq 'BLOB'){
+		$con = 4;
 	    }
 
 	    $master_ddl = $master_ddl.$_;
@@ -325,6 +339,44 @@ sub _table_constructor{
    $_objcounter += 1;
 }
 
+sub _sequence{
+    my $seqsql = qq{
+    SELECT SEQUENCE_NAME, INCREMENT_BY, MIN_VALUE, MAX_VALUE  FROM USER_SEQUENCES
+    };
+    my @seqlist;
+    my $i=0;
+    my $master_ddl='';
+    my $rth = $dbh->prepare($seqsql);
+
+    $rth->execute();
+
+    while(my @row = $rth->fetchrow_array){
+	push @seqlist, @row;
+    }
+    for (@seqlist){
+	if ($i==0){
+	    print "Dumping sequence $_...\n";
+	    $_objcounter += 1;
+	    $master_ddl .= qq{CREATE SEQUENCE "$_" LARGEINT START WITH 1 };
+	    $i++;
+	    next;
+	}elsif ($i==1){
+	    $master_ddl .= qq{INCREMENT BY $_ };
+	    $i++;
+	    next;
+	}elsif ($i==2){
+	    $master_ddl .= qq{MINVALUE $_ };
+	    $i++;
+	    next;
+	}elsif ($i==3){
+	    $master_ddl .= qq{MAXVALUE $_;\n};
+	    $i=0;
+	}
+    }
+
+    print QUERY $master_ddl;
+    
+}
 
 sub main{
     get_dbconnection();
@@ -336,6 +388,8 @@ sub main{
 	}
     }elsif($db_type eq 'REFCON'){
 	_ref_constraints();
+    }elsif($db_type eq 'SEQUENCE'){
+	_sequence();
     }
 }
 
