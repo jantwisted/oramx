@@ -58,6 +58,12 @@ my $extent1 = $cfg->param('PARAM1');
 my $extent2 = $cfg->param('PARAM2');
 my $maxextents = $cfg->param('MAXEXTENTS');
 my $_objcounter = 0;
+my @include;
+my %_INCLUDE = ();
+if ($cfg->param('INCLUDE')){
+    @include = $cfg->param('INCLUDE');
+    $_INCLUDE{$_}++ for (@include);
+}
 
 
 our %TYPE = (
@@ -88,12 +94,14 @@ our %KEYWORDS = (
 open (QUERY, ">>$query_file") or die "Could not open $query_file: $!";
 
 sub get_dbconnection{
+
     print "Trying to connect to database: dbi:Oracle:host=$db_host;sid=$db_name;port=$db_port\n";
     $dbh = DBI->connect("dbi:Oracle:host=$db_host;sid=$db_name;port=$db_port","$db_user","$db_pass");
 
 }
 
 sub obj_loader{
+
     print "Retrieving table information...\n";
     my $obj_list = 'SELECT TABLE_NAME  FROM ALL_TABLES WHERE OWNER = ?';
     my @list;
@@ -108,6 +116,7 @@ sub obj_loader{
 
 sub _tables{
 
+    ($db_object) = @_;
     my $sql = 'SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, DATA_DEFAULT, NULLABLE  FROM USER_TAB_COLUMNS WHERE TABLE_NAME = ?';
     my $pksql = 'SELECT COLS.COLUMN_NAME FROM ALL_CONSTRAINTS CONS, ALL_CONS_COLUMNS COLS WHERE COLS.TABLE_NAME = ? AND CONS.CONSTRAINT_TYPE = ? AND CONS.CONSTRAINT_NAME = COLS.CONSTRAINT_NAME AND CONS.OWNER = COLS.OWNER AND COLS.OWNER = ?';
     my $pknamesql = 'SELECT COLS.CONSTRAINT_NAME FROM ALL_CONSTRAINTS CONS, ALL_CONS_COLUMNS COLS WHERE COLS.TABLE_NAME = ? AND CONS.CONSTRAINT_TYPE = ? AND CONS.CONSTRAINT_NAME = COLS.CONSTRAINT_NAME AND CONS.OWNER = COLS.OWNER AND COLS.OWNER = ?';
@@ -115,15 +124,15 @@ sub _tables{
     my @list;
     my @pklist;
     my @pkname;
-    $sth->execute($db_object);
+    $sth->execute($db_object) or die $DBI::errstr;
 
 # get primary key
     my $sthpk = $dbh->prepare($pksql);
-    $sthpk->execute($db_object, 'P', $db_schema);
+    $sthpk->execute($db_object, 'P', $db_schema) or die $DBI::errstr;
 
 # get constraint name
     my $sthpkname = $dbh->prepare($pknamesql);
-    $sthpkname->execute($db_object, 'P', $db_schema);
+    $sthpkname->execute($db_object, 'P', $db_schema) or die $DBI::errstr;
 
     while (my @row = $sth->fetchrow_array) {
 	push @list, @row;
@@ -136,10 +145,10 @@ sub _tables{
     }
     _table_constructor(\@list, \@pklist, \@pkname);
 
-
 }
 
 sub _ref_constraints{
+
     my $refsql = qq{SELECT CONS.TABLE_NAME, CONS.CONSTRAINT_NAME, COLS2.COLUMN_NAME, COLS.TABLE_NAME, COLS.COLUMN_NAME
 	FROM ALL_CONSTRAINTS CONS LEFT JOIN ALL_CONS_COLUMNS COLS ON COLS.CONSTRAINT_NAME = CONS.R_CONSTRAINT_NAME
 	LEFT JOIN ALL_CONS_COLUMNS COLS2 ON COLS2.CONSTRAINT_NAME = CONS.CONSTRAINT_NAME
@@ -149,7 +158,7 @@ sub _ref_constraints{
     my $master_ddl='';
     my $rth = $dbh->prepare($refsql);
 
-    $rth->execute('R', $db_schema, $db_schema, $db_schema);
+    $rth->execute('R', $db_schema, $db_schema, $db_schema) or die $DBI::errstr;
 
     while(my @row = $rth->fetchrow_array){
 	push @reflist, @row;
@@ -185,6 +194,7 @@ sub _ref_constraints{
 }
 
 sub _primary_key{
+
     my ($pkcolumns, $name) = @_;
     my $_name = '';
     my $pk_query = '';
@@ -203,6 +213,7 @@ sub _primary_key{
 
 
 sub _primary_key_footer{
+
     my ($pkcolumns) = @_;
     my $pk_query = '';
     $pk_query = "\nSTORE BY(";
@@ -340,6 +351,7 @@ sub _table_constructor{
 }
 
 sub _sequence{
+
     my $seqsql = qq{
     SELECT SEQUENCE_NAME, MIN_VALUE, INCREMENT_BY, MIN_VALUE, MAX_VALUE  FROM USER_SEQUENCES
     };
@@ -383,12 +395,18 @@ sub _sequence{
 }
 
 sub main{
+
     get_dbconnection();
     if ($db_type eq 'TABLE'){
 	my @obj_list = obj_loader();
 	foreach(@obj_list){
-	    $db_object = $_;
-	    _tables(); 
+	    if (%_INCLUDE){
+		if (exists($_INCLUDE{$_})){
+		    _tables($_);
+		}
+	    }else{
+		_tables($_);
+	    }
 	}
     }elsif($db_type eq 'REFCON'){
 	_ref_constraints();
