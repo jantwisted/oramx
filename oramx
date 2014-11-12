@@ -58,11 +58,15 @@ my $extent1 = $cfg->param('PARAM1');
 my $extent2 = $cfg->param('PARAM2');
 my $maxextents = $cfg->param('MAXEXTENTS');
 my $_objcounter = 0;
-my @include;
-my %_INCLUDE = ();
+my (@include, @exclude);
+my (%_INCLUDE, %_EXCLUDE);
 if ($cfg->param('INCLUDE')){
     @include = $cfg->param('INCLUDE');
     $_INCLUDE{$_}++ for (@include);
+}
+if ($cfg->param('EXCLUDE')){
+    @exclude = $cfg->param('EXCLUDE');
+    $_EXCLUDE{$_}++ for (@exclude);    
 }
 
 
@@ -402,6 +406,10 @@ sub main{
 	foreach(@obj_list){
 	    if (%_INCLUDE){
 		if (exists($_INCLUDE{$_})){
+		    _tables($_);
+		}
+	    }elsif(%_EXCLUDE){
+		if (! exists($_EXCLUDE{$_})){
 		    _tables($_);
 		}
 	    }else{
