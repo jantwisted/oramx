@@ -71,7 +71,7 @@ if ($cfg->param('EXCLUDE')){
 
 
 our %TYPE = (
-    # Oracle to MX data types mapping goes here
+     # Oracle to MX data types mapping goes here
     'VARCHAR2' => 'VARCHAR',
     'NUMBER' => 'NUMERIC',
     'DATE' => 'TIMESTAMP',
@@ -398,6 +398,93 @@ sub _sequence{
     
 }
 
+sub _insert{
+
+
+    my ($_table) = @_;
+    print QUERY "\n------------ $_table ------------\n\n";
+    my $rowsql = qq{
+    SELECT * FROM $_table
+    };
+    my $outer_str = "INSERT INTO $_table ";
+    my $inner_str = undef;
+    my $i=0;
+    my $master_ddl='';
+    my $getRows = $dbh->prepare($rowsql);
+    $getRows->execute() || die "Cannot fetch all the rows!\n";
+    my $columns = $getRows->{NAME_lc};
+    my ($rowref, $ref, @colarray);
+    # outer wrapper
+    $outer_str .= "(";
+    $i=0; # initializing flag
+    foreach(@$columns){ 
+	if ($i == $#$columns)
+	{
+	    push(@colarray, $_);
+	    $outer_str .= uc $_;
+	}else{
+	    push(@colarray, $_);
+	    $outer_str .= uc $_.", ";
+	}
+	$i++;
+    }
+    $outer_str .= ") VALUES (";
+    while($ref = $getRows->fetchall_arrayref(undef, 1000))
+    {
+	print "Dumping inserts $_table...\n";   
+	foreach $rowref (@$ref)
+	{
+	    $i=0; # initializing flag
+ 	    foreach (@$rowref){
+		if ($i == $#$rowref){
+		    $inner_str .= _insert_get_columns($_, _get_column_type(uc $colarray[$i], $_table)).")\n;\n";
+		}else{
+		    $inner_str .= _insert_get_columns($_, _get_column_type(uc $colarray[$i], $_table)).", ";
+		}
+	        $i++;
+	    }
+	    print QUERY $outer_str.$inner_str;
+
+	    # initializing $inner_str
+	    $inner_str = undef;
+	}
+
+    }
+    
+}
+sub _get_column_type{
+   
+    my ($_column, $_table) = @_;
+    my @row;
+    my $colsql = qq{ 
+    SELECT DATA_TYPE FROM USER_TAB_COLUMNS WHERE TABLE_NAME = ?
+    AND COLUMN_NAME = ?
+    };
+    my $ctype = $dbh->prepare($colsql);
+    $ctype->execute($_table, $_column);
+    while(@row = $ctype->fetchrow_array){ last; }
+    return $row[0];
+
+}
+
+sub _insert_get_columns{
+
+    my ($_column, $_type) = @_;
+    $_type = $TYPE{$_type};
+    if ( $_type eq 'VARCHAR' ){
+	if (! defined $_column) { return "''"; }
+	else { return "'".$_column."'"; }
+    }elsif ( $_type eq 'TIMESTAMP' or $_type eq 'TIMESTAMP2' ){
+	if (! defined $_column) { return "''"; }
+	else { return "TIMESTAMP '$_column:00:00:00'"; }
+    }else{
+	if (! defined $_column) { return "''"; }
+	else { return $_column; }
+    }
+    
+ 
+}
+
 sub main{
 
     get_dbconnection();
@@ -420,6 +507,21 @@ sub main{
 	_ref_constraints();
     }elsif($db_type eq 'SEQUENCE'){
 	_sequence();
+    }elsif($db_type eq 'INSERT'){
+	my @obj_list = obj_loader();
+	foreach(@obj_list){
+	    if (%_INCLUDE){
+		if (exists($_INCLUDE{$_})){
+		    _insert($_);
+		}
+	    }elsif(%_EXCLUDE){
+		if (! exists($_EXCLUDE{$_})){
+		    _insert($_);
+		}
+	    }else{
+		_insert($_);
+	    }
+	}
     }
 }
 
