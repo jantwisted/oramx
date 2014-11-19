@@ -49,8 +49,7 @@ my $db_schema = $cfg->param('SCHEMA_NAME');
 my $log_file = "./error.log";
 my $query_file = $cfg->param('OUTPUT_FILE');
 my $debug = $cfg->param('DEBUG');
-my $dbh;
-my $dsn;
+my ($dbh, $dsn, $row_buffer);
 my $meta_query;
 my $location = $cfg->param('LOCATION');
 my $blocksize = $cfg->param('BLOCKSIZE');
@@ -67,6 +66,11 @@ if ($cfg->param('INCLUDE')){
 if ($cfg->param('EXCLUDE')){
     @exclude = $cfg->param('EXCLUDE');
     $_EXCLUDE{$_}++ for (@exclude);    
+}
+if ($cfg->param('ROW_BUFFER')){
+    $row_buffer = $cfg->param('ROW_BUFFER');
+}else{
+    $row_buffer = 1000;
 }
 
 
@@ -398,8 +402,16 @@ sub _sequence{
     
 }
 
-sub _insert{
+sub _init_insert{
+    
+    my $initsql = qq{
+    alter session set nls_date_format='YYYY-MM-DD'
+    };
+    my $init_db = $dbh->prepare($initsql);
+    $init_db->execute();
+}
 
+sub _insert{
 
     my ($_table) = @_;
     print QUERY "\n------------ $_table ------------\n\n";
@@ -409,9 +421,10 @@ sub _insert{
     my $outer_str = "INSERT INTO $_table ";
     my $inner_str = undef;
     my $i=0;
+    my $_total=0;
     my $master_ddl='';
     my $getRows = $dbh->prepare($rowsql);
-    $getRows->execute() || die "Cannot fetch all the rows!\n";
+    $getRows->execute();
     my $columns = $getRows->{NAME_lc};
     my ($rowref, $ref, @colarray);
     # outer wrapper
@@ -429,7 +442,7 @@ sub _insert{
 	$i++;
     }
     $outer_str .= ") VALUES (";
-    while($ref = $getRows->fetchall_arrayref(undef, 1000))
+    while($ref = $getRows->fetchall_arrayref(undef, $row_buffer))
     {
 	print "Dumping inserts $_table...\n";   
 	foreach $rowref (@$ref)
@@ -444,14 +457,18 @@ sub _insert{
 	        $i++;
 	    }
 	    print QUERY $outer_str.$inner_str;
+	    $_total += 1;
 
 	    # initializing $inner_str
 	    $inner_str = undef;
 	}
 
     }
+    print "$_table, total row count: $_total...\n";
+    $_objcounter += 1;
     
 }
+
 sub _get_column_type{
    
     my ($_column, $_table) = @_;
@@ -475,7 +492,7 @@ sub _insert_get_columns{
 	if (! defined $_column) { return "''"; }
 	else { return "'".$_column."'"; }
     }elsif ( $_type eq 'TIMESTAMP' or $_type eq 'TIMESTAMP2' ){
-	if (! defined $_column) { return "''"; }
+	if (! defined $_column) { return "NULL"; }
 	else { return "TIMESTAMP '$_column:00:00:00'"; }
     }else{
 	if (! defined $_column) { return "''"; }
@@ -508,6 +525,7 @@ sub main{
     }elsif($db_type eq 'SEQUENCE'){
 	_sequence();
     }elsif($db_type eq 'INSERT'){
+	_init_insert();
 	my @obj_list = obj_loader();
 	foreach(@obj_list){
 	    if (%_INCLUDE){
