@@ -437,7 +437,7 @@ sub _insert{
 	    $outer_str .= uc $_;
 	}else{
 	    push(@colarray, $_);
-	    $outer_str .= uc $_.", ";
+	    $outer_str .= uc $_.",";
 	}
 	$i++;
     }
@@ -452,7 +452,7 @@ sub _insert{
 		if ($i == $#$rowref){
 		    $inner_str .= _insert_get_columns($_, _get_column_type(uc $colarray[$i], $_table)).")\n;\n";
 		}else{
-		    $inner_str .= _insert_get_columns($_, _get_column_type(uc $colarray[$i], $_table)).", ";
+		    $inner_str .= _insert_get_columns($_, _get_column_type(uc $colarray[$i], $_table)).",";
 		}
 	        $i++;
 	    }
