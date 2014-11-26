@@ -17,5 +17,5 @@ Usage
 
 * configure oramx.conf file ( more config details available
 in the file itself )
-* give execute permissions to oramx.pl
-* ./oramx.pl
+* give execute permissions to oramx
+* ./oramx
