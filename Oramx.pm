@@ -593,6 +593,12 @@ sub outro{
  
 }
  
+sub DESTROY
+{
+    my $self = shift;
+    $self->{dbh}->disconnect();
+    $self->outro();
+}
  
  # main program
 # intro();
@@ -602,6 +608,7 @@ sub outro{
 # outro();
 
 
+
 sub new{
     my $class = shift;
     my $self = {@_};
@@ -609,17 +616,6 @@ sub new{
     $self->_init;
     return $self;
 }
-
-sub caller{
-    my $self = shift;
-    $self->test();
-}
-
-sub test{
-    my $self = shift;
-    print $self->{db_name};
-}
-
 
 
 1;
