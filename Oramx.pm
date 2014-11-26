@@ -35,7 +35,7 @@ use Getopt::Long;
 use utf8;
 
 
-my $VERSION = '0.6.1'; 
+my $VERSION = '0.8.0'; 
 
 
 
@@ -520,6 +520,7 @@ sub _insert_get_columns{
 sub main{
   
     my $self = shift;
+    $self->intro();
     $self->get_dbconnection();
     if ($self->{db_type} eq 'TABLE'){
  	my @obj_list = $self->obj_loader();
@@ -600,14 +601,6 @@ sub DESTROY
     $self->outro();
 }
  
- # main program
-# intro();
-# main();
-# $dbh->disconnect();
-# close QUERY;
-# outro();
-
-
 
 sub new{
     my $class = shift;
