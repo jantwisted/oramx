@@ -31,7 +31,6 @@ use Config::Simple;
 use strict;
 use warnings;
 use DBI;
-use Getopt::Long;
 use utf8;
 
 
@@ -41,10 +40,10 @@ my $VERSION = '0.8.0';
 
 sub _init
 {
-    
     my $self = shift;
-    Config::Simple->import_from('oramx.conf', \my %Config);
-    my $cfg = new Config::Simple('oramx.conf');
+ #   if (! defined $conf ){  $conf = 'oramx.conf'; }
+    Config::Simple->import_from($self->{config}, \my %Config) or die "Unable to open file $self->{config}: $!";  
+    my $cfg = new Config::Simple($self->{config});
     $self->{db_user} = $cfg->param('USER');
     $self->{db_pass} = $cfg->param('PASSWORD');
     $self->{db_name} = $cfg->param('DATABASE');

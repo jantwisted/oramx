@@ -31,9 +31,17 @@ use lib '.';
 use warnings;
 use strict;
 use Oramx;
+use Getopt::Long;
 
-my $oramx_obj = Oramx::new("Oramx");
+my $conf = 'oramx.conf';
+my $file = 'output.sql0';
 
+GetOptions('c|config=s' => \$conf,
+           'f|file=s' => \$file
+    );
+
+my $oramx_obj = Oramx::new("Oramx",
+    "config", $conf,
+    "file", $file );
 $oramx_obj->main();
-
 exit(0);
