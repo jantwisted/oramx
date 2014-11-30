@@ -41,7 +41,6 @@ my $VERSION = '0.8.0';
 sub _init
 {
     my $self = shift;
- #   if (! defined $conf ){  $conf = 'oramx.conf'; }
     Config::Simple->import_from($self->{config}, \my %Config) or die "Unable to open file $self->{config}: $!";  
     my $cfg = new Config::Simple($self->{config});
     $self->{db_user} = $cfg->param('USER');
