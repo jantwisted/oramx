@@ -42,6 +42,6 @@ GetOptions('c|config=s' => \$conf,
 
 my $oramx_obj = Oramx::new("Oramx",
     "config", $conf,
-    "file", $file );
+    "query_file", $file );
 $oramx_obj->main();
 exit(0);

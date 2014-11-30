@@ -53,7 +53,7 @@ sub _init
     $self->{db_port} = $cfg->param('PORT');
     $self->{db_schema} = $cfg->param('SCHEMA_NAME');
     $self->{log_file} = "./error.log";
-    $self->{query_file} = $cfg->param('OUTPUT_FILE');
+    if (! defined $self->{query_file} ){ $self->{query_file} = $cfg->param('OUTPUT_FILE');  }     
     $self->{debug} = $cfg->param('DEBUG');
     $self->{meta_query} = ();
     $self->{location} = $cfg->param('LOCATION');
