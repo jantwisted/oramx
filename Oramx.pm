@@ -34,7 +34,7 @@ use DBI;
 use utf8;
 
 
-my $VERSION = '0.8.0'; 
+my $VERSION = '1.0.0'; 
 
 
 
