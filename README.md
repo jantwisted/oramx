@@ -1,7 +1,7 @@
 oramx
 =====
 
-oracle to sqlmx converter
+oracle to sql/mx converter
 
 How to setup
 ------------
