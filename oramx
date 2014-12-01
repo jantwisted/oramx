@@ -34,7 +34,7 @@ use Oramx;
 use Getopt::Long;
 
 my $conf = 'oramx.conf';
-my $file = 'output.sql0';
+my $file = undef;
 
 GetOptions('c|config=s' => \$conf,
            'f|file=s' => \$file
