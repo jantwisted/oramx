@@ -35,13 +35,37 @@ use Getopt::Long;
 
 my $conf = 'oramx.conf';
 my $file = undef;
+my $help = undef;
 
 GetOptions('c|config=s' => \$conf,
-           'f|file=s' => \$file
+           'f|file=s' => \$file,
+	   'h|help' => \$help
     );
+
+
+sub usage
+{
+    print qq{                                                                                                                                            
+Usage: oramx [--option value]
+    
+   -c | --config  : configuration file name.
+                                                                                                 
+   -f | --file  : Output file (the result will be written here).
+
+   -h | --help
+
+};
+    exit 0;
+}
+
+if ($help){
+    usage();
+}
 
 my $oramx_obj = Oramx::new("Oramx",
     "config", $conf,
     "query_file", $file );
 $oramx_obj->main();
+
+
 exit(0);
