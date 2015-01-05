@@ -335,7 +335,7 @@ sub _table_constructor{
  		    $master_ddl = $master_ddl." NOT NULL";
  		}
  		if (@$pk){
- 		    $master_ddl .= ','._primary_key(\@$pk, \@$pkn);
+ 		    $master_ddl .= ','.$self->_primary_key(\@$pk, \@$pkn);
  		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.$self->_primary_key_footer(\@$pk).";\n\n\n\n";
  		}else{
  		    $master_ddl = $ddl_head.$master_ddl.$ddl_tail.$meta.";\n\n\n\n";
