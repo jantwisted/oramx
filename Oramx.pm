@@ -277,7 +277,7 @@ sub _table_constructor{
 		next;
 	    }
  	}
-	
+
 	
  	# looping ends
  	if ($i==0){
@@ -459,6 +459,7 @@ sub _insert{
  		}
  	        $i++;
  	    }
+	    
  	    print {$self->{QUERY}} $outer_str.$inner_str;
  	    $_total += 1;
 	    
@@ -490,13 +491,17 @@ sub _insert_get_columns{
  
     my $self = shift;
     my ($_column, $_type) = @_;
+    if ($_type =~ /^TIMESTAMP/){ $_type = 'TIMESTAMP'; }
     $_type = $TYPE {$_type};
     if ( $_type eq 'VARCHAR' ){
  	if (! defined $_column) { return "''"; }
  	else { return "'".$_column."'"; }
-    }elsif ( $_type eq 'TIMESTAMP' or $_type eq 'TIMESTAMP2' ){
+    }elsif ( $_type eq 'TIMESTAMP' ){
  	if (! defined $_column) { return "NULL"; }
  	else { return "TIMESTAMP '$_column:00:00:00'"; }
+    }elsif ( $_type eq 'TIMESTAMP2' ){
+ 	if (! defined $_column) { return "NULL"; }
+ 	else { return "CURRENT"; }	
     }else{
  	if (! defined $_column) { return "''"; }
  	else { return $_column; }
