@@ -66,6 +66,11 @@ sub _init
     }else{
 	$self->{row_buffer} = 1000;
     }
+    if ($cfg->param('WHERE')){
+	$self->{where_clause} = "where ".$cfg->param('WHERE');
+    }else{
+	$self->{where_clause} = "where 1=1";
+    }
 }
 
 our %TYPE = (
@@ -419,8 +424,8 @@ sub _insert{
     my ($_table) = @_;
     print {$self->{QUERY}} "\n------------ $_table ------------\n\n";
     my $rowsql = qq{
-     SELECT * FROM $_table
-     };
+         SELECT * FROM $_table $self->{where_clause}
+         };
     my $outer_str = "INSERT INTO $_table ";
     my $inner_str = undef;
     my $i=0;
@@ -492,6 +497,7 @@ sub _insert_get_columns{
     my $self = shift;
     my ($_column, $_type) = @_;
     if ($_type =~ /^TIMESTAMP/){ $_type = 'TIMESTAMP'; }
+    if ($_type =~ /^CHAR/){ $_type = 'VARCHAR2'; }
     $_type = $TYPE {$_type};
     if ( $_type eq 'VARCHAR' ){
  	if (! defined $_column) { return "''"; }
