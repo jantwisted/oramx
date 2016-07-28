@@ -24,7 +24,7 @@ use DBI;
 use utf8;
 
 
-my $VERSION = '1.0.0'; 
+my $VERSION = '1.2.0'; 
 
 
 
@@ -406,6 +406,39 @@ sub _sequence{
     print {$self->{QUERY}} $master_ddl;
     
 }
+
+sub _index{
+    my $self = shift;
+    my $idxsql = qq{
+   SELECT UIDX.INDEX_NAME, UIDX.TABLE_NAME, WM_CONCAT(UIDX.COLUMN_NAME) FROM USER_IND_COLUMNS UIDX
+   LEFT JOIN ALL_INDEXES AIDX ON AIDX.INDEX_NAME=UIDX.INDEX_NAME WHERE AIDX.OWNER=? GROUP BY UIDX.INDEX_NAME, UIDX.TABLE_NAME  
+    };
+    my @idxlist;
+    my $i=0;
+    my $master_ddl='';
+    my $rth = $self->{dbh}->prepare($idxsql);
+    $rth->execute($self->{db_schema}) or die $DBI::errstr;
+    while(my @row = $rth->fetchrow_array){
+	push @idxlist, @row;
+    }
+    for (@idxlist){
+	if ($i==0){
+	    print "Dumping index $_...\n";
+	    $self->{_objcounter} += 1;
+	    $master_ddl .= qq{CREATE UNIQUE INDEX "$_"};
+	    $i++;
+	    next;
+	}elsif ($i==1){
+	    $master_ddl .= qq{ ON "$_" };
+	    $i++;
+	    next;
+	}elsif ($i==2){
+	    $master_ddl .= qq{ ($_);\n};
+	    $i=0;
+	}
+    }
+    print {$self->{QUERY}} $master_ddl;
+}
  
 sub _init_insert{
      
@@ -541,6 +574,8 @@ sub main{
  	$self->_ref_constraints();
     }elsif($self->{db_type} eq 'SEQUENCE'){
  	$self->_sequence();
+    }elsif($self->{db_type} eq 'INDEX'){
+        $self->_index();
     }elsif($self->{db_type} eq 'INSERT'){
  	$self->_init_insert();
  	my @obj_list = $self->obj_loader();
